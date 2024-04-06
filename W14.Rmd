@@ -1,0 +1,249 @@
+---
+title: "W14"
+author: "Julie Engdal"
+date: "2024-04-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+install.packages("leaflet")
+install.packages("htmlwidget")
+
+library(leaflet)
+library(htmlwidgets)
+
+#Example 1: create a Leaflet map of Europe with addAwesomeMarkers() 
+
+addAwesomeMarkers()
+
+
+popup = c("Robin", "Jakub", "Jannes")
+
+leaflet(popup)
+
+addMarker()
+
+leaflet() %>% 
+  addProviderTiles("Esri.WorldPhysical") %>% 
+  addAwesomeMarkers(lng = c(-3,23,11),
+                    lat = c (52,53,49),
+                    popup = popup)
+
+# Example 2: create a Leaflet map of Sydney with the setView() function 
+
+setView()
+
+leaflet() %>% 
+  addTiles() %>% 
+  addProviderTiles("Esri.WorldImagery", 
+                   options = providerTileOptions(opacity = 0.5)) %>% 
+  setView(lng = 151.005006, lat = -33.9767231, zoom = 10)
+
+
+# Question 1: What is the order of longitude and latitude in the setView() function?
+
+# In the setView() function in Leaflet, the order of longitude and latitude parameters 
+# is typically lng (longitude) followed by lat (latitude).
+# lng corresponds to the longitude of the center point of the map, and lat corresponds to the
+# latitude of the center point of the map. This order is commonly used across various mapping 
+# libraries and frameworks for consistency.
+
+
+leaflet() %>% 
+  addTiles() %>% 
+  setView(lng = 2.34, lat = 48.85, zoom = 5) %>% 
+  addProviderTiles("Esri.WorldPhysical", group = "Physical") %>% 
+  addProviderTiles("Esri.WorldImagery", group = "Aerial") %>% 
+  addProviderTiles("MtbMap", group = "Geo") %>% 
+  
+  addLayersControl(
+    baseGroups = c("Geo","Aerial", "Physical"),
+    options = layersControlOptions(collapsed = T))
+
+
+# Question 2: How does the map above change if you replace the T 
+# in the last line of code above with F?
+
+# setting collapsed = F will cause the layer control to be expanded by default
+# when the map loads.
+# With this change, the layer control will be expanded by default, showing all available 
+# base layers when the map loads. This might be preferred if you want users to immediately 
+# see the available options without having to click on the control to expand it.
+
+
+# Example 3:  SYDNEY HARBOUR DISPLAY WITH 11 LAYERS
+leaflet() %>% 
+  setView(151.2339084, -33.85089, zoom = 13) %>%
+  addTiles() 
+
+l_aus <- leaflet() %>% 
+  setView(151.2339084, -33.85089, zoom = 13)
+
+esri <- grep("^Esri", providers, value = TRUE)
+
+
+for (provider in esri) {
+  l_aus <- l_aus %>% addProviderTiles (provider, group = provider)
+}
+
+AUSmap <- l_aus %>%
+  addLayersControl(baseGroups = names(esri),
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  addMiniMap(tiles = esri[[1]], toggleDisplay = TRUE,
+             position = "bottomright") %>%
+  addMeasure(
+    position = "bottomleft",
+    primaryLengthUnit = "meters",
+    primaryAreaUnit = "sqmeters",
+    activeColor = "#3D535D",
+    completedColor = "#7D4479") %>% 
+  htmlwidgets::onRender("
+                        function(el, x) {
+                        var myMap = this;
+                        myMap.on('baselayerchange',
+                        function (e) {
+                        myMap.minimap.changeLayer(L.tileLayer.provider(e.name));
+                        })
+                        }") %>% 
+  addControl("", position = "topright")
+
+# Running map
+AUSmap
+
+saveWidget(AUSmap, "AUSmap.html", selfcontained = TRUE)
+
+
+# TASK 1 Create a Danish equivalent of AUSmap with Esri layers, 
+# but call it DANmap. You will need it layer as a background for Danish data points.
+
+
+library(tidyverse)
+library(googlesheets4)
+library(leaflet)
+
+gs4_deauth()
+
+places <- read_sheet("https://docs.google.com/spreadsheets/d/1PlxsPElZML8LZKyXbqdAYeQCDIvDps2McZx1cTVWSzI/edit#gid=124710918",
+                     col_types = "cccnncnc",  
+                     range = "DM2023")
+
+glimpse(places)
+
+
+# Question 3: are the Latitude and Longitude columns present? 
+# Do they contain numeric decimal degrees?
+
+
+# You can verify the presence of the "Latitude" and "Longitude" columns and check if they 
+# have a numeric data type by using the glimpse(places) function. If these columns exist and
+# are numeric, then they likely contain numeric decimal degrees. If they aren't present or 
+# are of a different data type, they may have different names or contain non-numeric values.
+
+
+addMarkers()
+
+leaflet() %>% 
+  addTiles() %>% 
+  addMarkers(lng = places$Longitude, 
+             lat = places$Latitude,
+             popup = paste(places$Description, "<br>", places$Type))
+
+--------------------------------------------------------------------------------------------
+  
+
+# TASK 2  Read in the googlesheet data you and your colleagues created
+# into your DANmap object (with 11 background layers you created in Task 1).
+
+library(leaflet)
+
+DANmap <- leaflet() %>%
+  addProviderTiles("Esri.WorldPhysical") %>%  
+  addProviderTiles("Esri.WorldImagery")
+
+# Here i add data as markers or points on the map
+DANmap <- DANmap %>%
+  addMarkers(data = places, 
+             lng = ~Longitude, 
+             lat = ~Latitude,
+             popup = ~paste(Description, "<br>", Type))
+
+# Running map
+DANmap
+
+# TASK 3   Can you cluster the points in Leaflet?
+# Hint: Google "clustering options in Leaflet in R"
+
+install.packages("leaflet.extras")
+
+# I create DANmap and add layers
+DANmap <- leaflet() %>%
+  addProviderTiles("Esri.WorldPhysical") %>%  
+  addProviderTiles("Esri.WorldImagery")
+
+# Here i add my data as markers with clustering enabled
+DANmap <- DANmap %>%
+  addMarkers(data = places, 
+             clusterOptions = markerClusterOptions())
+
+# Running the map
+DANmap
+
+# Task 4    Look at the two maps (with and without clustering) and consider what
+# each is good for and what not.
+
+# Map without Clustering:
+# Good - Showing precise locations of individual data points.
+# Not good - At handling a large number of data points, which can clutter the map.
+
+# Map with Clustering:
+# Good - Efficiently handling a large number of data points by grouping nearby markers.
+# Not good - Not ideal for accurately pinpointing individual data points, especially in densely clustered areas.
+
+
+# Task 5: Find out how to display the notes and classifications column in the map. 
+# Hint: Check online help in sites such as 
+# https://r-charts.com/spatial/interactive-maps-leaflet/#popup
+
+
+# I create DANmap and add layers
+DANmap <- leaflet() %>%
+  addProviderTiles("Esri.WorldPhysical") %>%  
+  addProviderTiles("Esri.WorldImagery")
+
+# I add data as markers with custom popups
+DANmap <- DANmap %>%
+  addMarkers(data = places, 
+             lng = ~Longitude, 
+             lat = ~Latitude,
+             popup = paste("Description: ", places$Description, "<br>",
+                           "Type: ", places$Type, "<br>",
+                           "Notes: ", places$Notes, "<br>",
+                           "Classification: ", places$Classification))
+
+# Running the map
+DANmap
+
+
